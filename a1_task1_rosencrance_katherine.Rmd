@@ -28,7 +28,7 @@ amphibians <- read_excel(here("data", "sierra_amphibians.xlsx"))
 ```
 
 # Data Wrangling Part 1
-## Wrangle to find the total number of adult, subadult, and tadpole yellow-legged frogs observed in the entire study region by life stage and year
+Wrangle to find the total number of adult, subadult, and tadpole yellow-legged frogs observed in the entire study region by life stage and year.
 ```{r}
 
 # filter for life stage and species we need
@@ -46,7 +46,7 @@ yellow_amph <- amphibians %>%
 ```
 
 # Create first visualization
-## Total number of adult, subadult, and tadpole yellow-legged frogs observed in the entire study region by life stage and year
+Graph the total number of adult, subadult, and tadpole yellow-legged frogs observed in the entire study region by life stage and year.
 ```{r}
 yellow_amph_graph <- ggplot(data = yellow_amph_table, aes(fill = amphibian_life_stage, x = year, y = count, color = amphibian_life_stage)) +
   geom_col(stat = "identity",
@@ -72,7 +72,7 @@ yellow_amph_graph
 ```
 
 # Data Wrangling Part 2
-## Wrangle to create column graph containing total counts (over all years of the study) of combined adult and subadult endangered mountain yellow-legged frogs observed in the 5 lakes with the greatest total observed counts.
+Wrangle to create column graph containing total counts (over all years of the study) of combined adult and subadult endangered mountain yellow-legged frogs observed in the 5 lakes with the greatest total observed counts.
 ```{r}
 # need to create new df with just adult and subadult (no tadpole)
 yellow_amph_sub_adult <- yellow_amph %>% 
@@ -90,7 +90,7 @@ top_5_lakes <- yellow_amph_sub_adult %>%
 ```
 
 # Create Second Visualization
-## Create column graph containing total counts (over all years of the study) of combined adult and subadult endangered mountain yellow-legged frogs observed in the 5 lakes with the greatest total observed counts.
+Create column graph containing total counts (over all years of the study) of combined adult and subadult endangered mountain yellow-legged frogs observed in the 5 lakes with the greatest total observed counts.
 ```{r}
 top_lakes_graph <- ggplot(data = top_5_lakes, aes(x = reorder(lake_id, count), y = count)) +
   geom_col(stat = "identity",
@@ -113,6 +113,8 @@ top_lakes_graph
 ```{r}
 plot_grid(yellow_amph_graph, top_lakes_graph, labels = c('A', 'B'))
 ```
+
 **Figure 1: Mountain Yellow-Legged Frog Counts.** A. The number of mountain yellow-legged frogs in each year. These counts include tadpoles, subadults, and adults in every lake surveyed from 1995-2002. B. This displays the top 5 lakes with the most adults and subadults surveyed from 1995-2002. 
+
 # Citation
 **Data Citation:** Knapp, R.A., C. Pavelka, E.E. Hegeman, and T.C. Smith. 2020. The Sierra Lakes Inventory Project: Non-Native fish and community composition of lakes and ponds in the Sierra Nevada, California ver 2. Environmental Data Initiative. https://doi.org/10.6073/pasta/d835832d7fd00d9e4466e44eea87fab3
