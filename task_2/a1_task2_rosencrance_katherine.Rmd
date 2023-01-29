@@ -1,5 +1,5 @@
 ---
-title: "Assignment 1 Task 2"
+title: "Assignment 1 Task 2: Oxygen Saturation Model Selection"
 author: "Katherine Rosencrance"
 date: "2023-01-29"
 output: 
@@ -7,18 +7,168 @@ output:
     theme: journal
 ---
 # Data and Analysis
-
+CalCOFI (California Cooperative Oceanic Fisheries Investigations) has collected hydrographic and biological data from the California Current System since 1949. This specific data set includes water temperature, salinity, oxygen, nitrate, phosphate, water depth, and chlorophyll (CalCOFI, n.d). This analysis will compare two different models that predict oxygen saturation based on chemical and physical variables. 
 
 # Setup
 ```{r setup, include=TRUE, echo = TRUE, warning = FALSE, message = FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 # Install packages
+library(here)
+library(AICcmodavg)
+library(tidyverse)
+library(kableExtra)
 
 ```
 
 ```{r}
 # Read in the data
-
+sea_water_df <- read_csv(here("data", "calcofi_seawater_samples.csv"))
 ```
 
+# Create formulas for models
+```{r}
+# first formula  = oxygen as a function of temp, salinity, and phosphate
+f1 <- o2sat ~ t_deg_c + salinity + po4u_m
+
+#create the lm
+mdl1 <- lm(f1, data = sea_water_df)
+
+#second formula = oxygen as a function of temp, salinity, phosphate, and depth
+f2 <- o2sat ~ t_deg_c + salinity + po4u_m + depth_m
+
+#create the second lm
+mdl2 <- lm(f2, data = sea_water_df)
+```
+
+# AIC model selection method
+Akaike Information Criteria (AIC) identifies the model that maximizes the likelihood of those parameter values given these data, using the fewest possible independent variables.  A lower score is better; a difference of 2 indicates a significant difference in model fit.
+```{r}
+# corrected AIC using the AICcmodavg package
+aictab(list(mdl1, mdl2)) %>% 
+
+#create nice table for results
+  kable(col.names = c("Model", "Parameters", "AIC", "Delta AIC", "Model Likelihood", "AIC Weight", "Log Likelihood", "Cumulative Weight"),
+        caption = "Table 1: AIC Results") %>% 
+  kable_classic(position = "center")
+```
+
+# BIC model selection method
+Bayesian Information Criterion (BIC) is another method for scoring and selecting a model. It is similar to AIC, but places a larger penalty on parameters when n is large.A lower BIC score is better.
+```{r}
+# get BIC using AICmodavg package
+bictab(list(mdl1, mdl2)) %>% 
+
+#create nice table for results
+  kable(col.names = c("Model", "Parameters", "BIC", "Delta BIC", "Model Likelihood", "BIC Weight", "Log Likelihood", "Cumulative Weight"),
+        caption = "Table 2: BIC Results") %>% 
+  kable_classic(position = "center")
+```
+
+# Ten-fold cross validation selection method
+To see how well our models will perform with outside data, we will reserve a subset of data (test data) and train our model using the rest (training data) to estimate the model parameters. 
+```{r}
+# we are doing 10 folds for this K-fold CV
+folds <- 10
+fold_vec <- rep(1:folds, length.out = nrow(sea_water_df))
+
+#set the seed to aid in reproducibility
+set.seed(42)
+
+sea_water_fold <- sea_water_df %>%
+  mutate(group = sample(fold_vec, size = n(), replace = FALSE))
+
+table(sea_water_fold$group)
+```
+
+```{r}
+# first fold
+test_df <- sea_water_fold %>%
+  filter(group == 1)
+
+train_df <- sea_water_fold %>%
+  filter(group != 1)
+```
+
+```{r}
+#function for RMSE
+calc_rmse <- function(x, y) {
+  rmse <- (x - y)^2 %>% mean() %>% sqrt()
+  return(rmse)
+}
+```
+
+```{r}
+# Use the training dataset to create two linear models, based on models 1 and 2 from earlier.
+training_lm1 <- lm(f1, data = train_df)
+training_lm2 <- lm(f2, data = train_df)
+```
+
+```{r}
+# Now use these models to predict the oxygen saturation in our testing dataset, then use our RMSE function to see how well the predictions went
+predict_test <- test_df %>%
+  mutate(model1 = predict(training_lm1, test_df),
+         model2 = predict(training_lm2, test_df)) 
+
+rmse_predict_test <- predict_test %>%
+  summarize(rmse_mdl1 = calc_rmse(model1, o2sat),
+            rmse_mdl2 = calc_rmse(model2, o2sat))
+
+rmse_predict_test
+```
+```{r}
+# iterate for each group to have a turn being the testing data, using the other groups as training
+rmse_df <- data.frame()
+
+for(i in 1:folds) {
+# i <- 1
+  kfold_test_df <- sea_water_fold %>%
+    filter(group == i)
+  kfold_train_df <- sea_water_fold %>%
+    filter(group != i)
+  
+  kfold_lm1 <- lm(f1, data = kfold_train_df)
+  kfold_lm2 <- lm(f2, data = kfold_train_df)
+  
+  kfold_pred_df <- kfold_test_df %>%
+    mutate(mdl1 = predict(kfold_lm1, kfold_test_df),
+           mdl2 = predict(kfold_lm2, .))
+  
+    kfold_rmse <- kfold_pred_df %>%
+    summarize(rmse_mdl1 = calc_rmse(mdl1, o2sat),
+              rmse_mdl2 = calc_rmse(mdl2, o2sat),
+              test_gp = i)  
+    rmse_df <- bind_rows(rmse_df, kfold_rmse)
+}
+```
+
+
+```{r}
+rmse_df
+
+rmse_df %>% 
+  summarize(mean_rmse_mdl1 = mean(rmse_mdl1),
+            mean_rmse_mdl2 = mean(rmse_mdl2)) %>% 
+# put into a nice table
+  kable(col.names = c("Mean RMSE Model 1", "Mean RMSE Model 2"),
+        caption = "Table 3: Mean RMSE Results") %>% 
+  kable_classic(position = "center")
+# model 2 does a slightly better job of predicting oxygen saturation (lower error) than model 1
+```
+
+```{r}
+# use the entire dataset, rather than testing/training sets, to identify the coefficients for the final predictive model, based on model 2 (lowest AIC, BIc, and mean rmse)
+final_mdl <- lm(f2, data = sea_water_df)
+summary(final_mdl)
+```
+
+# Our final model:
+`r equatiomatic::extract_eq(mdl2, wrap = TRUE)`
+
+and with coefficients in place:
+`r equatiomatic::extract_eq(mdl2, wrap = TRUE, use_coefs = TRUE)`
+
+All 3 methods used to select the model (AIC, BIC, and 10-fold cross validation) showed that model 2 was the best one. The AIC results clearly showed that the delta AIC between models 1 and 2 was ~2.42. This proves that there is significant positive evidence in favor of model 2, which had the lower AIC. The BIC results similarly displayed that model 2 had a lower BIC, but it placed a larger penalty on additional parameters, so the delta BIC was not as high as the delta AIC. However, model 2 was still supported. The 10-fold cross validation also supported choosing model 2 because of the lower RMSE as seen in table 3. A lower RMSE (root-mean square error) indicates the "better" model. 
+
+# Citation
+**Data Citation:** CalCOFI data are available for use without restriction. Data downloaded from https://calcofi.org/ccdata.html.  Accessed 1/10/2022.
