@@ -42,16 +42,16 @@ yellow_amph <- amphibians %>%
 # create a summary table to organize by year and life stage
   yellow_amph_table <- yellow_amph %>% 
     group_by(year, amphibian_life_stage) %>% 
-  summarise(count = sum(amphibian_number))
+  summarise(count = sum(amphibian_number, na.rm=TRUE))
 ```
 
 # Create first visualization
 Graph the total number of adult, subadult, and tadpole yellow-legged frogs observed in the entire study region by life stage and year.
 ```{r}
-yellow_amph_graph <- ggplot(data = yellow_amph_table, aes(fill = amphibian_life_stage, x = year, y = count, color = amphibian_life_stage)) +
+yellow_amph_graph <- ggplot(data = yellow_amph_table, aes(fill = amphibian_life_stage, x = year, y = count)) +
   geom_col(stat = "identity",
-           position = "dodge",
            color = "black")+
+  scale_fill_manual(values =c("lightsalmon1", "goldenrod2", "navajowhite3"))+
   theme_minimal()+
   labs( x = "Year",
         y = "Number of Mountain Yellow-legged Frogs",
@@ -62,7 +62,7 @@ yellow_amph_graph <- ggplot(data = yellow_amph_table, aes(fill = amphibian_life_
         plot.subtitle = element_text(hjust = 0.5, face = "bold", size = 9),
         axis.title.x = element_text(vjust = 0.2, face = "bold", size = 8),
         axis.title.y = element_text(face = "bold", size = 8),
-        plot.background = element_rect(fill = "floralwhite"),
+        plot.background = element_rect(fill = "white"),
         legend.title = element_text(size=8, face = "bold"),
         legend.text = element_text(size=8),
         legend.position = "top",
@@ -93,8 +93,7 @@ top_5_lakes <- yellow_amph_sub_adult %>%
 Create column graph containing total counts (over all years of the study) of combined adult and subadult endangered mountain yellow-legged frogs observed in the 5 lakes with the greatest total observed counts.
 ```{r}
 top_lakes_graph <- ggplot(data = top_5_lakes, aes(x = reorder(lake_id, count), y = count)) +
-  geom_col(stat = "identity",
-           color = "black")+
+  geom_col(aes(fill = lake_id), show.legend = FALSE)+
   theme_minimal()+
   labs( x = "Lake ID",
         y = "Number of Mountain Yellow-legged Frogs",
@@ -105,7 +104,9 @@ top_lakes_graph <- ggplot(data = top_5_lakes, aes(x = reorder(lake_id, count), y
         axis.title.x = element_text(vjust = 0.2, face = "bold", size = 8),
         axis.title.y = element_text(face = "bold", size = 8),
         axis.text = element_text(size = 6),
-        plot.background = element_rect(fill = "floralwhite"))
+        plot.background = element_rect(fill = "white"))+
+  scale_fill_manual(values = c("cornflowerblue", "lightskyblue1", "deepskyblue3", "royalblue3", "royalblue4"))
+  
 top_lakes_graph
 ```
 
